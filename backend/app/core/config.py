@@ -11,5 +11,6 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
-AI_API_KEY = os.getenv("AI_API_KEY", "")
-AI_API_BASE_URL = os.getenv("AI_API_BASE_URL", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
