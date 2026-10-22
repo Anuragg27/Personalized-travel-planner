@@ -1,7 +1,11 @@
 import { useState } from 'react'
-import { createTrip } from '../services/tripsAPI.js'
+import {
+  createTrip,
+  getRecommendations,
+} from '../services/tripsAPI.js'
 
 const initialForm = {
+  origin: '',
   destination: '',
   start_date: '',
   end_date: '',
@@ -28,6 +32,8 @@ function TripPreferenceForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [recommendations, setRecommendations] = useState(null)
+  const [recommendationError, setRecommendationError] = useState('')
 
   function handleChange(event) {
     const { name, value } = event.target
@@ -56,10 +62,12 @@ function TripPreferenceForm() {
     setError('')
 
     if (
+      !form.origin.trim() ||
       !form.destination.trim() ||
       !form.start_date ||
       !form.end_date ||
       !form.budget ||
+      !Number.isFinite(Number(form.budget)) ||
       Number(form.budget) <= 0 ||
       !Number.isInteger(Number(form.travelers)) ||
       Number(form.travelers) < 1 ||
@@ -79,8 +87,11 @@ function TripPreferenceForm() {
 
   async function handleSubmit(event) {
     event.preventDefault()
+
     setError('')
     setSuccess('')
+    setRecommendationError('')
+    setRecommendations(null)
 
     if (form.interests.length === 0) {
       setError('Please select at least one travel interest.')
@@ -92,18 +103,77 @@ function TripPreferenceForm() {
     try {
       const payload = {
         ...form,
+        origin: form.origin.trim(),
         destination: form.destination.trim(),
         budget: Number(form.budget),
         travelers: Number(form.travelers),
       }
 
+      // Save trip preferences.
       const result = await createTrip(payload)
-      setSuccess(result.message)
+
+      setSuccess(
+        result.message || 'Your trip preferences have been saved.',
+      )
+
+      // Generate personalized AI recommendations.
+      try {
+        const recommendationResult = await getRecommendations(payload)
+
+        setRecommendations(
+          recommendationResult.recommendations ??
+            recommendationResult,
+        )
+      } catch (recommendationErr) {
+        setRecommendationError(
+          recommendationErr.message ||
+            'Your trip was saved, but recommendations could not be generated.',
+        )
+      }
     } catch (err) {
-      setError(err.message || 'Unable to submit travel preferences.')
+      setError(err.message || 'Unable to save travel preferences.')
     } finally {
       setLoading(false)
     }
+  }
+
+  function renderRecommendationCategory(title, items) {
+    if (!Array.isArray(items) || items.length === 0) {
+      return null
+    }
+
+    return (
+      <section className="recommendation-category" key={title}>
+        <h3>{title.replaceAll('_', ' ')}</h3>
+
+        <div className="recommendation-grid">
+          {items.map((item, index) => (
+            <article
+              className="recommendation-card"
+              key={`${title}-${item.name || index}`}
+            >
+              <h4>{item.name || 'Travel recommendation'}</h4>
+
+              {item.description && <p>{item.description}</p>}
+
+              {item.reason && (
+                <p>
+                  <strong>Why we recommend it:</strong>{' '}
+                  {item.reason}
+                </p>
+              )}
+
+              {item.estimated_cost !== undefined && (
+                <p>
+                  <strong>Estimated cost:</strong>{' '}
+                  ₹{Number(item.estimated_cost).toLocaleString('en-IN')}
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+    )
   }
 
   return (
@@ -122,6 +192,7 @@ function TripPreferenceForm() {
           <span className={step === 1 ? 'active' : 'completed'}>
             1. Trip details
           </span>
+
           <span className={step === 2 ? 'active' : ''}>
             2. Preferences
           </span>
@@ -143,8 +214,23 @@ function TripPreferenceForm() {
           <form onSubmit={handleNext}>
             <div className="form-grid">
               <label className="form-field full-width">
+                Starting location
+                <input
+                  type="text"
+                  name="origin"
+                  value={form.origin}
+                  onChange={handleChange}
+                  placeholder="e.g. Bhopal"
+                  minLength={2}
+                  maxLength={100}
+                  required
+                />
+              </label>
+
+              <label className="form-field full-width">
                 Destination
                 <input
+                  type="text"
                   name="destination"
                   value={form.destination}
                   onChange={handleChange}
@@ -156,7 +242,7 @@ function TripPreferenceForm() {
               </label>
 
               <label className="form-field">
-                Start date
+                Departure date
                 <input
                   type="date"
                   name="start_date"
@@ -167,7 +253,7 @@ function TripPreferenceForm() {
               </label>
 
               <label className="form-field">
-                End date
+                Return date
                 <input
                   type="date"
                   name="end_date"
@@ -253,9 +339,15 @@ function TripPreferenceForm() {
                 value={form.travel_pace}
                 onChange={handleChange}
               >
-                <option value="relaxed">Relaxed — fewer activities</option>
-                <option value="moderate">Moderate — balanced days</option>
-                <option value="fast">Fast — explore as much as possible</option>
+                <option value="relaxed">
+                  Relaxed — fewer activities
+                </option>
+                <option value="moderate">
+                  Moderate — balanced days
+                </option>
+                <option value="fast">
+                  Fast — explore as much as possible
+                </option>
               </select>
             </label>
 
@@ -263,6 +355,7 @@ function TripPreferenceForm() {
               <button
                 className="secondary-button"
                 type="button"
+                disabled={loading}
                 onClick={() => {
                   setError('')
                   setStep(1)
@@ -276,12 +369,57 @@ function TripPreferenceForm() {
                 type="submit"
                 disabled={loading}
               >
-                {loading ? 'Submitting...' : 'Create My Trip'}
+                {loading
+                  ? 'Saving trip and generating recommendations...'
+                  : 'Create My Trip'}
               </button>
             </div>
           </form>
         )}
       </div>
+
+      {recommendationError && (
+        <div className="form-message error" role="alert">
+          <strong>
+            Your trip was saved, but AI recommendations are unavailable.
+          </strong>
+          <p>{recommendationError}</p>
+          <p>You can try generating recommendations again later.</p>
+        </div>
+      )}
+
+      {recommendations && (
+        <section className="recommendations-section">
+          <div className="trip-form-heading">
+            <p className="eyebrow">MADE FOR YOU</p>
+            <h2>Your personalized travel recommendations</h2>
+            <p>
+              Your journey from {form.origin} to {form.destination}.
+              Costs are estimates and should be verified before your trip.
+            </p>
+          </div>
+
+          {renderRecommendationCategory(
+            'Attractions',
+            recommendations.attractions,
+          )}
+
+          {renderRecommendationCategory(
+            'Activities',
+            recommendations.activities,
+          )}
+
+          {renderRecommendationCategory(
+            'Dining',
+            recommendations.dining,
+          )}
+
+          {renderRecommendationCategory(
+            'Local experiences',
+            recommendations.local_experiences,
+          )}
+        </section>
+      )}
     </section>
   )
 }
