@@ -42,6 +42,7 @@ class TripPreferenceRequest(BaseModel):
     )
 
     travel_pace: Literal["relaxed", "moderate", "fast"] = "moderate"
+
     vibe: Literal[
         "relaxed",
         "adventure",
@@ -49,6 +50,24 @@ class TripPreferenceRequest(BaseModel):
         "budget",
         "balanced",
     ] = "balanced"
+
+    @model_validator(mode="after")
+    def validate_dates(self):
+        if self.end_date < self.start_date:
+            raise ValueError(
+                "End date must be on or after the start date"
+            )
+        return self
+
+
+class TripUpdateRequest(BaseModel):
+    origin: str = Field(min_length=2, max_length=100)
+    destination: str = Field(min_length=2, max_length=100)
+    start_date: date
+    end_date: date
+
+    budget: float = Field(gt=0)
+    travelers: int = Field(ge=1, le=20)
 
     @model_validator(mode="after")
     def validate_dates(self):

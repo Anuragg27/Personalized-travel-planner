@@ -3,44 +3,87 @@ import { supabase } from './supabase.js'
 const TRIPS_API_URL = 'http://127.0.0.1:8000'
 const ITINERARY_API_URL = 'http://127.0.0.1:8000'
 
-// Create a trip and save preferences to Supabase through FastAPI
-export async function createTrip(tripPreferences) {
+// Get the current authenticated session.
+async function getAuthHeaders() {
   const {
     data: { session },
-    error: sessionError,
+    error,
   } = await supabase.auth.getSession()
 
-  if (sessionError) {
-    throw new Error(sessionError.message)
+  if (error) {
+    throw new Error(error.message)
   }
 
   if (!session) {
-    throw new Error('Please log in before creating a trip.')
+    throw new Error('Please log in to continue.')
   }
 
-  const response = await fetch(`${TRIPS_API_URL}/api/trips/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify(tripPreferences),
-  })
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${session.access_token}`,
+  }
+}
 
+// Handle API responses consistently.
+async function handleResponse(response, fallbackMessage) {
   const data = await response.json().catch(() => ({}))
 
   if (!response.ok) {
     throw new Error(
       typeof data.detail === 'string'
         ? data.detail
-        : JSON.stringify(data.detail || 'Failed to create trip'),
+        : JSON.stringify(data.detail || fallbackMessage),
     )
   }
 
   return data
 }
 
-// Generate personalized travel recommendations
+// Create a trip and save preferences.
+export async function createTrip(tripPreferences) {
+  const headers = await getAuthHeaders()
+
+  const response = await fetch(`${TRIPS_API_URL}/api/trips/`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(tripPreferences),
+  })
+
+  return handleResponse(response, 'Failed to create trip.')
+}
+
+// Get all trips belonging to the logged-in user.
+export async function getMyTrips() {
+  const headers = await getAuthHeaders()
+
+  const response = await fetch(`${TRIPS_API_URL}/api/trips/`, {
+    method: 'GET',
+    headers,
+  })
+
+  return handleResponse(response, 'Failed to fetch your trips.')
+}
+
+// Get one saved trip by ID.
+export async function getTripById(tripId) {
+  if (!tripId) {
+    throw new Error('Trip ID is required.')
+  }
+
+  const headers = await getAuthHeaders()
+
+  const response = await fetch(
+    `${TRIPS_API_URL}/api/trips/${encodeURIComponent(tripId)}`,
+    {
+      method: 'GET',
+      headers,
+    },
+  )
+
+  return handleResponse(response, 'Failed to fetch trip details.')
+}
+
+// Generate personalized travel recommendations.
 export async function getRecommendations(tripPreferences) {
   const response = await fetch(
     `${ITINERARY_API_URL}/api/itinerary/recommendations`,
@@ -53,61 +96,44 @@ export async function getRecommendations(tripPreferences) {
     },
   )
 
-  const data = await response.json().catch(() => ({}))
-
-  if (!response.ok) {
-    throw new Error(
-      typeof data.detail === 'string'
-        ? data.detail
-        : JSON.stringify(
-            data.detail || 'Failed to generate recommendations',
-          ),
-    )
-  }
-
-  return data
+  return handleResponse(response, 'Failed to generate recommendations.')
 }
 
-// Generate an itinerary and save it to an existing trip
+// Generate an itinerary and save it to an existing trip.
 export async function generateItinerary(tripPreferences, tripId) {
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession()
-
-  if (sessionError) {
-    throw new Error(sessionError.message)
-  }
-
-  if (!session) {
-    throw new Error('Please log in before generating an itinerary.')
-  }
-
   if (!tripId) {
     throw new Error('Trip ID is required to save the itinerary.')
   }
+
+  const headers = await getAuthHeaders()
 
   const response = await fetch(
     `${ITINERARY_API_URL}/api/itinerary/generate?trip_id=${encodeURIComponent(tripId)}`,
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      headers,
       body: JSON.stringify(tripPreferences),
     },
   )
 
-  const data = await response.json().catch(() => ({}))
-
-  if (!response.ok) {
-    throw new Error(
-      typeof data.detail === 'string'
-        ? data.detail
-        : JSON.stringify(data.detail || 'Failed to generate itinerary'),
-    )
+  return handleResponse(response, 'Failed to generate itinerary.')
+}
+// Update an existing trip.
+export async function updateTrip(tripId, tripUpdates) {
+  if (!tripId) {
+    throw new Error('Trip ID is required to update a trip.')
   }
 
-  return data
+  const headers = await getAuthHeaders()
+
+  const response = await fetch(
+    `${TRIPS_API_URL}/api/trips/${encodeURIComponent(tripId)}`,
+    {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(tripUpdates),
+    },
+  )
+
+  return handleResponse(response, 'Failed to update trip.')
 }
