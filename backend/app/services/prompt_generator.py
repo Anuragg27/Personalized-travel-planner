@@ -13,6 +13,7 @@ def generate_itinerary_prompt(preferences: dict[str, Any]) -> str:
     interests = preferences.get("interests", [])
     dietary_needs = preferences.get("dietary_needs", "No restrictions")
     travel_pace = preferences.get("travel_pace", "moderate")
+    vibe = preferences.get("vibe", "balanced")
     travel_style = preferences.get("travel_style", "Not specified")
     mobility_concerns = preferences.get(
         "mobility_concerns",
@@ -41,6 +42,34 @@ def generate_itinerary_prompt(preferences: dict[str, Any]) -> str:
         str(travel_pace).lower(),
         pace_instructions["moderate"],
     )
+    vibe_instructions = {
+        "relaxed": (
+            "Create a peaceful, slow-paced experience with scenic spots, "
+            "cafes, nature, relaxation, and sufficient free time."
+        ),
+        "adventure": (
+            "Prioritize adventure activities, outdoor exploration, "
+            "trekking, hiking, and exciting local experiences where suitable."
+        ),
+        "luxury": (
+            "Prioritize premium experiences, comfortable transportation, "
+            "upscale dining, and high-quality accommodation while respecting "
+            "the traveler's stated budget."
+        ),
+        "budget": (
+            "Prioritize affordable attractions, local food, free activities, "
+            "economical transportation, and cost-effective accommodation."
+        ),
+        "balanced": (
+            "Create a balanced travel experience combining sightseeing, "
+            "food, relaxation, and local cultural experiences."
+        ),
+    }
+
+    vibe_instruction = vibe_instructions.get(
+        str(vibe).lower(),
+        vibe_instructions["balanced"],
+    )
 
     prompt = f"""
 You are an experienced travel planner specializing in
@@ -58,6 +87,7 @@ TRIP DETAILS
 * Total trip budget: ₹{budget}
 * Number of travelers: {travelers}
 * Travel style: {travel_style}
+* Selected travel vibe: {vibe}
 * Interests: {interests}
 * Dietary requirements: {dietary_needs}
 * Preferred travel pace: {travel_pace}
@@ -81,6 +111,7 @@ JOURNEY PLANNING INSTRUCTIONS
 PERSONALIZATION INSTRUCTIONS
 
 * {pace_instruction}
+* {vibe_instruction}
 * Prioritize activities matching the traveler's interests.
 * Respect dietary requirements when recommending meals.
 * Consider mobility concerns when selecting activities,

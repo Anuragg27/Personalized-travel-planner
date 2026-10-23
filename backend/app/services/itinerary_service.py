@@ -10,13 +10,9 @@ async def generate_itinerary(preferences: dict) -> dict:
 
     prompt = f"""
 Create a personalized travel itinerary using these preferences:
+{json.dumps(preferences, separators=(",", ":"), default=str)}
 
-{json.dumps(preferences, indent=2, default=str)}
-
-Return ONLY a valid JSON object. Do not use Markdown or code fences.
-
-Use exactly this structure:
-
+Return ONLY valid JSON using this structure:
 {{
   "destination": "Destination name",
   "days": [
@@ -24,49 +20,45 @@ Use exactly this structure:
       "day": 1,
       "date": "YYYY-MM-DD",
       "morning": {{
-        "time": "9:00 AM - 12:00 PM",
+        "time": "9 AM - 12 PM",
         "activity": "Activity name",
-        "description": "Short description",
-        "notes": "Useful travel tips"
+        "description": "Brief description",
+        "notes": "Useful tip"
       }},
       "afternoon": {{
-        "time": "1:00 PM - 4:00 PM",
+        "time": "1 PM - 4 PM",
         "activity": "Activity name",
-        "description": "Short description",
-        "notes": "Useful travel tips"
+        "description": "Brief description",
+        "notes": "Useful tip"
       }},
       "evening": {{
-        "time": "5:00 PM - 8:00 PM",
+        "time": "5 PM - 8 PM",
         "activity": "Activity name",
-        "description": "Short description",
-        "notes": "Useful travel tips"
+        "description": "Brief description",
+        "notes": "Useful tip"
       }}
     }}
   ]
 }}
 
-OPTIMIZATION REQUIREMENTS:
+Rules:
 - Include every date from start_date to end_date, inclusive.
-- Use the correct date for each day.
-- Respect the budget, interests, dietary needs, travel pace, and mobility concerns.
-- Group nearby attractions together on the same day to reduce unnecessary travel.
-- Arrange activities in a geographically sensible order.
-- Consider realistic travel time between activities.
-- Include reasonable meal breaks and rest periods.
-- Avoid repeating the same attraction or activity.
-- Account for arrival and departure times when planning the first and last days.
-- Adapt the schedule to the requested travel pace.
-- Do not invent verified prices, opening hours, or availability.
-- Include all three periods for each day.
-- Use double quotes for JSON keys and string values.
-- Do not include comments, trailing commas, or text outside the JSON.
+- Use correct dates and sequential day numbers.
+- Respect budget, interests, dietary needs, travel pace, and mobility needs.
+- Group nearby attractions and allow realistic travel time.
+- Include meal breaks and rest.
+- Avoid repeating activities.
+- Adapt the first and last days to arrival and departure.
+- Do not invent verified prices or opening hours.
+- Include all three periods every day.
+- Keep descriptions and notes brief to reduce output size.
+- Return complete, valid JSON only. No Markdown or extra text.
 """
 
     response = await provider.generate(prompt)
-
-    # Remove accidental Markdown code fences.
     response = response.strip()
 
+    # Remove accidental Markdown code fences.
     if response.startswith("```"):
         lines = response.splitlines()
 
@@ -78,11 +70,10 @@ OPTIMIZATION REQUIREMENTS:
 
         response = "\n".join(lines).strip()
 
-    # Check for an empty response.
     if not response:
         raise RuntimeError("Groq returned an empty response.")
 
-    # Parse the generated JSON.
+    # Parse generated JSON.
     try:
         itinerary = json.loads(response)
     except json.JSONDecodeError as exc:
@@ -93,16 +84,12 @@ OPTIMIZATION REQUIREMENTS:
             "Groq returned invalid JSON. Check the backend terminal for details."
         ) from exc
 
-    # Validate the overall itinerary structure.
+    # Validate the itinerary structure.
     if not isinstance(itinerary, dict):
-        raise RuntimeError(
-            "The generated itinerary must be a JSON object."
-        )
+        raise RuntimeError("The generated itinerary must be a JSON object.")
 
     if not isinstance(itinerary.get("destination"), str):
-        raise RuntimeError(
-            "The generated itinerary has an invalid destination."
-        )
+        raise RuntimeError("The generated itinerary has an invalid destination.")
 
     days = itinerary.get("days")
 
@@ -114,17 +101,13 @@ OPTIMIZATION REQUIREMENTS:
     required_periods = ["morning", "afternoon", "evening"]
     required_fields = ["time", "activity", "description", "notes"]
 
-    # Validate every day and each scheduled activity.
     for index, day in enumerate(days, start=1):
         if not isinstance(day, dict):
-            raise RuntimeError(
-                f"Day {index} must be a JSON object."
-            )
+            raise RuntimeError(f"Day {index} must be a JSON object.")
 
         if day.get("day") != index:
             raise RuntimeError(
-                f"Expected day number {index}, "
-                f"but received {day.get('day')}."
+                f"Expected day number {index}, but received {day.get('day')}."
             )
 
         if not isinstance(day.get("date"), str) or not day["date"].strip():
@@ -149,5 +132,4 @@ OPTIMIZATION REQUIREMENTS:
                         f"'{field}' field in its {period} activity."
                     )
 
-    # Return the itinerary only after all validation checks pass.
     return itinerary

@@ -22,9 +22,9 @@ class GroqProvider(LLMProvider):
                     "role": "system",
                     "content": (
                         "You are a travel itinerary planner. "
-                        "Return one complete, valid JSON object only. "
-                        "Do not include Markdown, explanations, or code fences. "
-                        "Ensure every object, array, and string is properly closed."
+                        "Return only a valid JSON object containing "
+                        "destination and days. Follow the user's "
+                        "requested structure exactly."
                     ),
                 },
                 {
@@ -32,13 +32,20 @@ class GroqProvider(LLMProvider):
                     "content": prompt,
                 },
             ],
-            temperature=0.2,
-            response_format={"type": "json_object"},
+            temperature=0.1,
+            max_completion_tokens=5000,
         )
 
-        content = response.choices[0].message.content
+        choice = response.choices[0]
+        content = choice.message.content
 
-        if not content:
-            raise RuntimeError("Groq returned an empty response.")
+        if not content or not content.strip():
+            print("Groq finish reason:", choice.finish_reason)
+            print("Groq response:", response.model_dump())
 
-        return content
+            raise RuntimeError(
+                "Groq returned an empty response. "
+                "Check the backend terminal for finish reason."
+            )
+
+        return content.strip()
