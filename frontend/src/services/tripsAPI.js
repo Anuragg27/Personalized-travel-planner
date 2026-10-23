@@ -1,7 +1,9 @@
 import { supabase } from './supabase.js'
 
-const API_BASE_URL = 'http://127.0.0.1:8000'
+const TRIPS_API_URL = 'http://127.0.0.1:8001'
+const ITINERARY_API_URL = 'http://127.0.0.1:8001'
 
+// Create a trip and save preferences to Supabase through FastAPI
 export async function createTrip(tripPreferences) {
   // 1. Get the current authenticated session
   const {
@@ -17,8 +19,8 @@ export async function createTrip(tripPreferences) {
     throw new Error('Please log in before creating a trip.')
   }
 
-  // 2. Send preferences and the access token to FastAPI
-  const response = await fetch(`${API_BASE_URL}/api/trips/`, {
+  // 2. Send preferences and access token to FastAPI
+  const response = await fetch(`${TRIPS_API_URL}/api/trips/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -35,6 +37,35 @@ export async function createTrip(tripPreferences) {
       typeof data.detail === 'string'
         ? data.detail
         : JSON.stringify(data.detail || 'Failed to create trip'),
+    )
+  }
+
+  return data
+}
+
+// Generate personalized travel recommendations using Gemini
+export async function getRecommendations(tripPreferences) {
+  const response = await fetch(
+    `${ITINERARY_API_URL}/api/itinerary/recommendations`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(tripPreferences),
+    },
+  )
+
+  // Handle the response safely
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(
+      typeof data.detail === 'string'
+        ? data.detail
+        : JSON.stringify(
+            data.detail || 'Failed to generate recommendations',
+          ),
     )
   }
 

@@ -5,6 +5,7 @@ from google import genai
 from google.genai.errors import ServerError
 
 from app.core.config import GEMINI_API_KEY
+from app.services.prompt_builder import build_recommendation_prompt
 
 
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
@@ -18,6 +19,11 @@ def generate_recommendations(prompt: str) -> dict:
             "Gemini API key is missing. Check backend/.env."
         )
 
+    # Build the complete AI prompt.
+    complete_prompt = build_recommendation_prompt({
+        "user_request": prompt
+    })
+
     response = None
 
     for attempt in range(3):
@@ -25,11 +31,7 @@ def generate_recommendations(prompt: str) -> dict:
             response = client.models.generate_content(
                 model="gemini-3.6-flash",
                 contents=f"""
-{prompt}
-
-Generate personalized travel recommendations based on the traveler's
-destination, budget, interests, travel style, dietary needs, and mobility
-requirements.
+{complete_prompt}
 
 Return ONLY valid JSON using this structure:
 
@@ -69,13 +71,8 @@ Return ONLY valid JSON using this structure:
 }}
 
 Requirements:
-- Return recommendations appropriate for the specified destination.
-- Prioritize the traveler's interests and travel style.
-- Respect the stated budget and dietary requirements.
-- Consider mobility concerns.
-- Use numeric estimated_cost values, expressed in INR.
+- Use numeric estimated_cost values expressed in INR.
 - Treat prices as estimates, not verified prices.
-- Do not invent specific business details.
 - Return valid JSON only, without Markdown code fences.
 """,
             )
@@ -113,4 +110,3 @@ Requirements:
             )
 
     return result
-    

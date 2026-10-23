@@ -22,7 +22,9 @@ class GroqProvider(LLMProvider):
                     "role": "system",
                     "content": (
                         "You are a travel itinerary planner. "
-                        "Return valid JSON only, without Markdown code fences."
+                        "Return one complete, valid JSON object only. "
+                        "Do not include Markdown, explanations, or code fences. "
+                        "Ensure every object, array, and string is properly closed."
                     ),
                 },
                 {
@@ -30,7 +32,8 @@ class GroqProvider(LLMProvider):
                     "content": prompt,
                 },
             ],
-            temperature=0.7,
+            temperature=0.2,
+            response_format={"type": "json_object"},
         )
 
         content = response.choices[0].message.content
