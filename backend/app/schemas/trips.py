@@ -42,6 +42,13 @@ class TripPreferenceRequest(BaseModel):
     )
 
     travel_pace: Literal["relaxed", "moderate", "fast"] = "moderate"
+    vibe: Literal[
+        "relaxed",
+        "adventure",
+        "luxury",
+        "budget",
+        "balanced",
+    ] = "balanced"
 
     @model_validator(mode="after")
     def validate_dates(self):
