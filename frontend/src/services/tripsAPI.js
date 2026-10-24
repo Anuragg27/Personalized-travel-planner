@@ -1,7 +1,7 @@
 import { supabase } from './supabase.js'
 
-const TRIPS_API_URL = 'http://127.0.0.1:8000'
-const ITINERARY_API_URL = 'http://127.0.0.1:8000'
+const TRIPS_API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+const ITINERARY_API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 // Get the current authenticated session.
 async function getAuthHeaders() {
