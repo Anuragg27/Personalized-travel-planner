@@ -32,7 +32,7 @@ class TripPreferenceRequest(BaseModel):
     )
 
     interests: list[str] = Field(
-        min_length=1,
+        default_factory=list,
         description="Preferred travel activities",
     )
 

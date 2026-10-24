@@ -33,7 +33,7 @@ class GroqProvider(LLMProvider):
                 },
             ],
             temperature=0.1,
-            max_completion_tokens=5000,
+            max_completion_tokens=8000,
         )
 
         choice = response.choices[0]

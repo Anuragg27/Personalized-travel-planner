@@ -163,10 +163,7 @@ def update_trip(
     user = get_authenticated_user(authorization)
 
     try:
-        update_data = updates.model_dump(
-            mode="json",
-            exclude={"travelers"},
-        )
+        update_data = updates.model_dump(mode="json")
 
         response = (
             supabase.table("trips")
