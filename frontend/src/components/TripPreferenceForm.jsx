@@ -29,93 +29,187 @@ const availableInterests = [
 ]
 
 const availableVibes = [
-  {
-    value: 'relaxed',
-    emoji: '🌿',
-    label: 'Relaxed',
-    description: 'Nature, peaceful places, and downtime',
-  },
-  {
-    value: 'adventure',
-    emoji: '🏔️',
-    label: 'Adventure',
-    description: 'Trekking, hiking, and exploration',
-  },
-  {
-    value: 'luxury',
-    emoji: '✨',
-    label: 'Luxury',
-    description: 'Premium experiences and comfort',
-  },
-  {
-    value: 'budget',
-    emoji: '💰',
-    label: 'Budget',
-    description: 'Affordable stays and experiences',
-  },
-  {
-    value: 'balanced',
-    emoji: '⚖️',
-    label: 'Balanced',
-    description: 'A little bit of everything',
-  },
+  { value: 'relaxed', label: 'Relaxed', description: 'Slow travel and peaceful experiences' },
+  { value: 'adventure', label: 'Adventure', description: 'Outdoor activities and exciting experiences' },
+  { value: 'luxury', label: 'Luxury', description: 'Premium stays and memorable experiences' },
+  { value: 'budget', label: 'Budget-friendly', description: 'Affordable experiences and smart spending' },
+  { value: 'balanced', label: 'Balanced', description: 'A little bit of everything' },
 ]
 
+const itineraryPeriods = [
+  { key: 'morning', label: 'Morning', icon: '🌅' },
+  { key: 'afternoon', label: 'Afternoon', icon: '☀️' },
+  { key: 'evening', label: 'Evening', icon: '🌆' },
+]
+
+function formatCurrency(value) {
+  const amount = Number(value)
+
+  if (!Number.isFinite(amount)) {
+    return value
+  }
+
+  return `₹${amount.toLocaleString('en-IN')}`
+}
+
+function renderItineraryActivity(periodKey, activity) {
+  const period = itineraryPeriods.find(
+    (item) => item.key === periodKey,
+  )
+
+  if (!activity) {
+    return null
+  }
+
+  const activityDetails =
+    typeof activity === 'string'
+      ? { activity }
+      : activity
+
+  if (
+    typeof activityDetails !== 'object' ||
+    activityDetails === null ||
+    Array.isArray(activityDetails)
+  ) {
+    return null
+  }
+
+  const activityName =
+    activityDetails.activity ||
+    activityDetails.name ||
+    activityDetails.title ||
+    'Explore your destination'
+
+  return (
+    <div className="generated-activity" key={periodKey}>
+      <div className="generated-activity-icon">
+        {period?.icon || '📍'}
+      </div>
+
+      <div className="generated-activity-content">
+        <span className="generated-activity-period">
+          {period?.label || periodKey}
+        </span>
+
+        <h4>{activityName}</h4>
+
+        {activityDetails.time && (
+          <span className="generated-activity-time">
+            {activityDetails.time}
+          </span>
+        )}
+
+        {activityDetails.description && (
+          <p>{activityDetails.description}</p>
+        )}
+
+        {activityDetails.location && (
+          <p>
+            <strong>Location:</strong>{' '}
+            {activityDetails.location}
+          </p>
+        )}
+
+        {activityDetails.estimated_cost != null && (
+          <p>
+            <strong>Estimated cost:</strong>{' '}
+            {formatCurrency(activityDetails.estimated_cost)}
+          </p>
+        )}
+
+        {activityDetails.notes && (
+          <div className="generated-activity-tip">
+            <strong>Travel tip:</strong>{' '}
+            {activityDetails.notes}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function TripPreferenceForm() {
-  const [step, setStep] = useState(1)
   const [form, setForm] = useState(initialForm)
+  const [step, setStep] = useState(1)
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [recommendations, setRecommendations] = useState(null)
-  const [recommendationError, setRecommendationError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+
+  const [createdTrip, setCreatedTrip] = useState(null)
   const [itinerary, setItinerary] = useState(null)
-  const [itineraryError, setItineraryError] = useState('')
+  const [recommendations, setRecommendations] = useState(null)
 
   function handleChange(event) {
     const { name, value } = event.target
 
-    setForm((previous) => ({
-      ...previous,
+    setForm((previousForm) => ({
+      ...previousForm,
       [name]: value,
     }))
   }
 
   function handleInterestChange(interest) {
-    setForm((previous) => {
-      const selected = previous.interests.includes(interest)
+    setForm((previousForm) => {
+      const alreadySelected =
+        previousForm.interests.includes(interest)
 
       return {
-        ...previous,
-        interests: selected
-          ? previous.interests.filter((item) => item !== interest)
-          : [...previous.interests, interest],
+        ...previousForm,
+        interests: alreadySelected
+          ? previousForm.interests.filter(
+              (item) => item !== interest,
+            )
+          : [...previousForm.interests, interest],
       }
     })
   }
 
-  function handleNext(event) {
-    event.preventDefault()
-    setError('')
+  function validateStepOne() {
+    if (!form.origin.trim()) {
+      setError('Please enter your starting location.')
+      return false
+    }
 
-    if (
-      !form.origin.trim() ||
-      !form.destination.trim() ||
-      !form.start_date ||
-      !form.end_date ||
-      !form.budget ||
-      !Number.isFinite(Number(form.budget)) ||
-      Number(form.budget) <= 0 ||
-      !Number.isInteger(Number(form.travelers)) ||
-      Number(form.travelers) < 1 ||
-      Number(form.travelers) > 20
-    ) {
-      setError('Please enter valid details for all trip fields.')
-      return
+    if (!form.destination.trim()) {
+      setError('Please enter your destination.')
+      return false
+    }
+
+    if (!form.start_date || !form.end_date) {
+      setError('Please select your travel dates.')
+      return false
     }
 
     if (form.end_date < form.start_date) {
-      setError('Return date cannot be before the departure date.')
+      setError('The return date cannot be before the start date.')
+      return false
+    }
+
+    if (
+      !Number.isFinite(Number(form.budget)) ||
+      Number(form.budget) <= 0
+    ) {
+      setError('Please enter a valid budget greater than zero.')
+      return false
+    }
+
+    if (
+      !Number.isInteger(Number(form.travelers)) ||
+      Number(form.travelers) < 1
+    ) {
+      setError('Please enter at least one traveler.')
+      return false
+    }
+
+    setError('')
+    return true
+  }
+
+  function handleContinue() {
+    setError('')
+
+    if (!validateStepOne()) {
       return
     }
 
@@ -126,434 +220,699 @@ function TripPreferenceForm() {
     event.preventDefault()
 
     setError('')
-    setSuccess('')
-    setRecommendationError('')
-    setRecommendations(null)
-    setItineraryError('')
+    setSuccessMessage('')
+    setCreatedTrip(null)
     setItinerary(null)
+    setRecommendations(null)
 
-    if (form.interests.length === 0) {
-      setError('Please select at least one travel interest.')
+    if (!validateStepOne()) {
+      setStep(1)
       return
     }
 
     setLoading(true)
 
-    try {
-      const payload = {
-        ...form,
-        origin: form.origin.trim(),
-        destination: form.destination.trim(),
-        budget: Number(form.budget),
-        travelers: Number(form.travelers),
-      }
+    const payload = {
+      ...form,
+      origin: form.origin.trim(),
+      destination: form.destination.trim(),
+      budget: Number(form.budget),
+      travelers: Number(form.travelers),
+      interests: form.interests,
+      dietary_needs: form.dietary_needs,
+      travel_pace: form.travel_pace,
+      vibe: form.vibe,
+    }
 
-      // Save trip preferences first.
+    try {
       const result = await createTrip(payload)
 
-      if (!result.trip?.id) {
-        throw new Error('Trip was saved, but its ID was not returned.')
+      const tripId = result?.trip?.id ?? result?.id
+
+      if (!tripId) {
+        throw new Error(
+          'Your trip could not be saved because the server did not return a trip ID.',
+        )
       }
 
-      setSuccess(result.message || 'Your trip preferences have been saved.')
+      setCreatedTrip(result.trip ?? result)
 
-      // Generate and save the itinerary.
+      let itineraryError = ''
+      let recommendationError = ''
+
       try {
         const itineraryResult = await generateItinerary(
           payload,
-          result.trip.id,
+          tripId,
         )
 
-        setItinerary(itineraryResult.itinerary)
-      } catch (err) {
-        setItineraryError(
-          err.message || 'Failed to generate or save the itinerary.',
-        )
+        const generatedItinerary =
+          itineraryResult?.itinerary ?? itineraryResult
+
+        if (
+          generatedItinerary &&
+          Array.isArray(generatedItinerary.days)
+        ) {
+          setItinerary(generatedItinerary)
+        } else {
+          itineraryError =
+            'The itinerary was generated, but its response format was unexpected.'
+        }
+      } catch (generationError) {
+        itineraryError =
+          generationError?.message ||
+          'We could not generate your itinerary right now.'
       }
 
-      // Generate personalized recommendations.
       try {
-        const recommendationResult = await getRecommendations(payload)
+        const recommendationResult =
+          await getRecommendations(payload)
 
-        setRecommendations(
-          recommendationResult.recommendations ?? recommendationResult,
+        const recommendationData =
+          recommendationResult?.recommendations ??
+          recommendationResult
+
+        setRecommendations(recommendationData)
+      } catch (recommendationFetchError) {
+        recommendationError =
+          recommendationFetchError?.message ||
+          'Recommendations are temporarily unavailable.'
+      }
+
+      if (itineraryError && recommendationError) {
+        setError(
+          `Your trip was saved successfully, but ${itineraryError} ${recommendationError}`,
         )
-      } catch (err) {
-        setRecommendationError(
-          err.message || 'AI recommendations could not be generated.',
+      } else if (itineraryError) {
+        setError(
+          `Your trip was saved successfully, but ${itineraryError}`,
+        )
+      } else if (recommendationError) {
+        setError(
+          `Your itinerary is ready, but ${recommendationError}`,
+        )
+      } else {
+        setSuccessMessage(
+          'Your trip has been saved and your personalized travel plan is ready!',
         )
       }
-    } catch (err) {
-      setError(err.message || 'Unable to save travel preferences.')
+    } catch (submitError) {
+      setError(
+        submitError?.response?.data?.detail ||
+          submitError?.message ||
+          'Something went wrong while creating your trip. Please try again.',
+      )
     } finally {
       setLoading(false)
     }
   }
 
-  function renderRecommendationCategory(title, items) {
-    if (!Array.isArray(items) || items.length === 0) {
+  function handleCreateAnotherTrip() {
+    setForm(initialForm)
+    setStep(1)
+    setError('')
+    setSuccessMessage('')
+    setCreatedTrip(null)
+    setItinerary(null)
+    setRecommendations(null)
+  }
+
+  function renderRecommendationGroups(data) {
+    if (!data) {
       return null
     }
 
+    const groups = Array.isArray(data)
+      ? [{ category: 'Recommended for you', items: data }]
+      : Object.entries(data).map(([category, value]) => ({
+          category,
+          items: Array.isArray(value)
+            ? value
+            : value?.items ?? [],
+        }))
+
+    const validGroups = groups.filter(
+      (group) =>
+        Array.isArray(group.items) &&
+        group.items.length > 0,
+    )
+
+    if (validGroups.length === 0) {
+      return (
+        <section className="generated-recommendations">
+          <div className="trip-form-heading">
+            <h2>Your Recommendations</h2>
+          </div>
+          <p>
+            No recommendations are available right now.
+            Try again later.
+          </p>
+        </section>
+      )
+    }
+
     return (
-      <section className="recommendation-category" key={title}>
-        <h3>{title}</h3>
-
-        <div className="recommendation-grid">
-          {items.map((item, index) => (
-            <article
-              className="recommendation-card"
-              key={`${title}-${item.name || index}`}
-            >
-              <h4>{item.name || 'Travel recommendation'}</h4>
-
-              {item.description && <p>{item.description}</p>}
-
-              {item.reason && (
-                <p>
-                  <strong>Why we recommend it:</strong> {item.reason}
-                </p>
-              )}
-
-              {item.estimated_cost !== undefined && (
-                <p>
-                  <strong>Estimated cost:</strong> ₹
-                  {Number(item.estimated_cost).toLocaleString('en-IN')}
-                </p>
-              )}
-            </article>
-          ))}
+      <section className="recommendations-section generated-recommendations">
+        <div className="trip-form-heading">
+          <p className="trip-eyebrow">
+            ✦ HANDPICKED FOR YOUR TRIP
+          </p>
+          <h2>Recommendations for you</h2>
+          <p>
+            Discover experiences that match your travel
+            preferences.
+          </p>
         </div>
+
+        {validGroups.map((group) => (
+          <div
+            className="recommendation-category"
+            key={group.category}
+          >
+            <h3>{formatCategory(group.category)}</h3>
+
+            <div className="recommendation-grid">
+              {group.items.map((item, index) => {
+                const recommendation =
+                  typeof item === 'string'
+                    ? { name: item }
+                    : item
+
+                return (
+                  <article
+                    className="recommendation-card"
+                    key={
+                      recommendation.id ??
+                      recommendation.name ??
+                      recommendation.title ??
+                      index
+                    }
+                  >
+                    <h4>
+                      {recommendation.name ??
+                        recommendation.title ??
+                        'Recommended experience'}
+                    </h4>
+
+                    {recommendation.description && (
+                      <p>{recommendation.description}</p>
+                    )}
+
+                    {recommendation.reason && (
+                      <p>
+                        <strong>Why we recommend it:</strong>{' '}
+                        {recommendation.reason}
+                      </p>
+                    )}
+
+                    {recommendation.estimated_cost != null && (
+                      <p>
+                        <strong>Estimated cost:</strong>{' '}
+                        {formatCurrency(
+                          recommendation.estimated_cost,
+                        )}
+                      </p>
+                    )}
+                  </article>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </section>
     )
   }
 
-  function renderItineraryActivity(period, activity) {
-    if (!activity) return null
-
-    return (
-      <div className="recommendation-card" key={period}>
-        <h4>
-          {period.charAt(0).toUpperCase() + period.slice(1)}:{' '}
-          {activity.activity}
-        </h4>
-
-        <p>
-          <strong>Time:</strong> {activity.time}
-        </p>
-
-        <p>{activity.description}</p>
-
-        <p>
-          <strong>Travel tip:</strong> {activity.notes}
-        </p>
-      </div>
-    )
-  }
-
   return (
-    <section className="trip-form-section">
-      <div className="trip-form-heading">
-        <p className="eyebrow">YOUR NEXT ADVENTURE</p>
-        <h1>Plan a trip that's uniquely yours</h1>
-        <p>
-          Tell us what you love, and start building your personalized
-          travel experience.
-        </p>
-      </div>
-
-      <div className="trip-form-card">
-        <div className="step-indicator">
-          <span className={step === 1 ? 'active' : 'completed'}>
-            1. Trip details
-          </span>
-
-          <span className={step === 2 ? 'active' : ''}>
-            2. Preferences
-          </span>
-        </div>
-
-        {error && (
-          <div className="form-message error" role="alert">
-            {error}
+    <div className="trip-preference-container">
+      {!itinerary && (
+        <form
+          className="trip-preference-form"
+          onSubmit={handleSubmit}
+        >
+          <div className="trip-form-heading">
+            <p className="trip-eyebrow">
+              ✦ YOUR NEXT ADVENTURE STARTS HERE
+            </p>
+            <h2>Plan your perfect trip</h2>
+            <p>
+              Tell us what you love, and we will help you
+              plan a personalized journey.
+            </p>
           </div>
-        )}
 
-        {success && (
-          <div className="form-message success" role="status">
-            {success}
-          </div>
-        )}
-
-        {step === 1 ? (
-          <form onSubmit={handleNext}>
-            <div className="form-grid">
-              <label className="form-field full-width">
-                Starting location
-                <input
-                  type="text"
-                  name="origin"
-                  value={form.origin}
-                  onChange={handleChange}
-                  placeholder="e.g. Bhopal"
-                  minLength={2}
-                  maxLength={100}
-                  required
-                />
-              </label>
-
-              <label className="form-field full-width">
-                Destination
-                <input
-                  type="text"
-                  name="destination"
-                  value={form.destination}
-                  onChange={handleChange}
-                  placeholder="e.g. Manali"
-                  minLength={2}
-                  maxLength={100}
-                  required
-                />
-              </label>
-
-              <label className="form-field">
-                Departure date
-                <input
-                  type="date"
-                  name="start_date"
-                  value={form.start_date}
-                  onChange={handleChange}
-                  required
-                />
-              </label>
-
-              <label className="form-field">
-                Return date
-                <input
-                  type="date"
-                  name="end_date"
-                  value={form.end_date}
-                  onChange={handleChange}
-                  min={form.start_date || undefined}
-                  required
-                />
-              </label>
-
-              <label className="form-field">
-                Total budget (₹)
-                <input
-                  type="number"
-                  name="budget"
-                  value={form.budget}
-                  onChange={handleChange}
-                  placeholder="20000"
-                  min="1"
-                  step="0.01"
-                  required
-                />
-              </label>
-
-              <label className="form-field">
-                Number of travelers
-                <input
-                  type="number"
-                  name="travelers"
-                  value={form.travelers}
-                  onChange={handleChange}
-                  min="1"
-                  max="20"
-                  step="1"
-                  required
-                />
-              </label>
+          <div className="trip-form-progress">
+            <div
+              className={`trip-form-progress-step ${
+                step === 1 ? 'active' : 'completed'
+              }`}
+            >
+              <span>1</span>
+              <p>Trip details</p>
             </div>
 
-            <button className="primary-button" type="submit">
-              Continue to preferences →
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <fieldset className="interest-fieldset">
-              <legend>What are you interested in?</legend>
+            <div
+              className={`trip-form-progress-step ${
+                step === 2 ? 'active' : ''
+              }`}
+            >
+              <span>2</span>
+              <p>Your preferences</p>
+            </div>
+          </div>
 
-              <div className="interest-grid">
-                {availableInterests.map((interest) => (
-                  <label className="interest-option" key={interest}>
-                    <input
-                      type="checkbox"
-                      checked={form.interests.includes(interest)}
-                      onChange={() => handleInterestChange(interest)}
-                    />
-                    <span>{interest}</span>
-                  </label>
-                ))}
+          {error && (
+            <div className="form-error" role="alert">
+              {error}
+            </div>
+          )}
+
+          {step === 1 && (
+            <div className="trip-form-section">
+              <div className="trip-form-heading">
+                <h3>Where do you want to go?</h3>
+                <p>
+                  Start with the basics of your upcoming
+                  journey.
+                </p>
               </div>
-            </fieldset>
 
-            <fieldset className="vibe-fieldset">
-              <legend>What is your travel vibe?</legend>
-
-              <p className="field-description">
-                Choose the kind of experience you want. We'll personalize
-                your recommendations accordingly.
-              </p>
-
-              <div className="vibe-grid">
-                {availableVibes.map((vibe) => (
-                  <label
-                    className={`vibe-option ${
-                      form.vibe === vibe.value ? 'selected' : ''
-                    }`}
-                    key={vibe.value}
-                  >
-                    <input
-                      type="radio"
-                      name="vibe"
-                      value={vibe.value}
-                      checked={form.vibe === vibe.value}
-                      onChange={handleChange}
-                    />
-
-                    <span className="vibe-emoji">{vibe.emoji}</span>
-                    <span className="vibe-label">{vibe.label}</span>
-                    <span className="vibe-description">
-                      {vibe.description}
-                    </span>
+              <div className="trip-form-grid">
+                <div className="form-group">
+                  <label htmlFor="origin">
+                    Starting location
                   </label>
-                ))}
+                  <input
+                    id="origin"
+                    name="origin"
+                    type="text"
+                    placeholder="e.g. Indore"
+                    value={form.origin}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="destination">
+                    Destination
+                  </label>
+                  <input
+                    id="destination"
+                    name="destination"
+                    type="text"
+                    placeholder="e.g. Goa"
+                    value={form.destination}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="start_date">
+                    Departure date
+                  </label>
+                  <input
+                    id="start_date"
+                    name="start_date"
+                    type="date"
+                    value={form.start_date}
+                    onChange={handleChange}
+                    min={new Date().toISOString().split('T')[0]}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="end_date">
+                    Return date
+                  </label>
+                  <input
+                    id="end_date"
+                    name="end_date"
+                    type="date"
+                    value={form.end_date}
+                    onChange={handleChange}
+                    min={
+                      form.start_date ||
+                      new Date().toISOString().split('T')[0]
+                    }
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="budget">
+                    Total budget (₹)
+                  </label>
+                  <input
+                    id="budget"
+                    name="budget"
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="e.g. 15000"
+                    value={form.budget}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="travelers">
+                    Number of travelers
+                  </label>
+                  <input
+                    id="travelers"
+                    name="travelers"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={form.travelers}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
               </div>
-            </fieldset>
-
-            <label className="form-field">
-              Dietary preferences
-              <select
-                name="dietary_needs"
-                value={form.dietary_needs}
-                onChange={handleChange}
-              >
-                <option value="No restrictions">No restrictions</option>
-                <option value="Vegetarian">Vegetarian</option>
-                <option value="Vegan">Vegan</option>
-                <option value="Jain">Jain</option>
-                <option value="Gluten-free">Gluten-free</option>
-                <option value="Other">Other</option>
-              </select>
-            </label>
-
-            <label className="form-field">
-              Preferred travel pace
-              <select
-                name="travel_pace"
-                value={form.travel_pace}
-                onChange={handleChange}
-              >
-                <option value="relaxed">Relaxed — fewer activities</option>
-                <option value="moderate">Moderate — balanced days</option>
-                <option value="fast">
-                  Fast — explore as much as possible
-                </option>
-              </select>
-            </label>
-
-            <div className="form-actions">
-              <button
-                className="secondary-button"
-                type="button"
-                disabled={loading}
-                onClick={() => {
-                  setError('')
-                  setStep(1)
-                }}
-              >
-                ← Back
-              </button>
 
               <button
                 className="primary-button"
-                type="submit"
-                disabled={loading}
+                type="button"
+                onClick={handleContinue}
               >
-                {loading
-                  ? 'Saving trip and generating your plans...'
-                  : 'Create My Trip'}
+                Continue to preferences →
               </button>
             </div>
-          </form>
-        )}
-      </div>
+          )}
 
-      {itineraryError && (
-        <div className="form-message error" role="alert">
-          <strong>Itinerary generation failed.</strong>
-          <p>{itineraryError}</p>
+          {step === 2 && (
+            <div className="trip-form-section">
+              <div className="trip-form-heading">
+                <h3>Make this trip yours</h3>
+                <p>
+                  Choose the experiences and travel style
+                  that suit you best.
+                </p>
+              </div>
+
+              <div className="form-group">
+                <label>What are you interested in?</label>
+                <p className="form-help-text">
+                  Select all that apply.
+                </p>
+
+                <div className="interest-options">
+                  {availableInterests.map((interest) => {
+                    const selected =
+                      form.interests.includes(interest)
+
+                    return (
+                      <button
+                        className={`interest-option ${
+                          selected ? 'selected' : ''
+                        }`}
+                        type="button"
+                        key={interest}
+                        aria-pressed={selected}
+                        onClick={() =>
+                          handleInterestChange(interest)
+                        }
+                      >
+                        {selected ? '✓ ' : '+ '}
+                        {interest}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="travel_pace">
+                  Travel pace
+                </label>
+                <select
+                  id="travel_pace"
+                  name="travel_pace"
+                  value={form.travel_pace}
+                  onChange={handleChange}
+                >
+                  <option value="relaxed">
+                    Relaxed — fewer activities
+                  </option>
+                  <option value="moderate">
+                    Moderate — a balanced schedule
+                  </option>
+                  <option value="fast">
+                    Fast-paced — see more places
+                  </option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="dietary_needs">
+                  Dietary preferences
+                </label>
+                <select
+                  id="dietary_needs"
+                  name="dietary_needs"
+                  value={form.dietary_needs}
+                  onChange={handleChange}
+                >
+                  <option value="No restrictions">
+                    No restrictions
+                  </option>
+                  <option value="Vegetarian">
+                    Vegetarian
+                  </option>
+                  <option value="Vegan">Vegan</option>
+                  <option value="Jain">Jain</option>
+                  <option value="Gluten-free">
+                    Gluten-free
+                  </option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Choose your travel vibe</label>
+
+                <div className="vibe-options">
+                  {availableVibes.map((vibe) => (
+                    <button
+                      className={`vibe-option ${
+                        form.vibe === vibe.value
+                          ? 'selected'
+                          : ''
+                      }`}
+                      type="button"
+                      key={vibe.value}
+                      aria-pressed={
+                        form.vibe === vibe.value
+                      }
+                      onClick={() =>
+                        setForm((previousForm) => ({
+                          ...previousForm,
+                          vibe: vibe.value,
+                        }))
+                      }
+                    >
+                      <strong>{vibe.label}</strong>
+                      <span>{vibe.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="trip-form-actions">
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => {
+                    setError('')
+                    setStep(1)
+                  }}
+                  disabled={loading}
+                >
+                  ← Back
+                </button>
+
+                <button
+                  className="primary-button"
+                  type="submit"
+                  disabled={loading}
+                >
+                  {loading
+                    ? 'Creating your trip...'
+                    : '✨ Create my trip'}
+                </button>
+              </div>
+            </div>
+          )}
+        </form>
+      )}
+
+      {error && itinerary && (
+        <div className="form-error" role="alert">
+          {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="form-success" role="status">
+          {successMessage}
         </div>
       )}
 
       {itinerary && (
-        <section className="recommendations-section">
-          <div className="trip-form-heading">
-            <p className="eyebrow">YOUR PERSONALIZED JOURNEY</p>
-            <h2>Your {itinerary.destination} itinerary</h2>
-            <p>
-              From {form.origin} to {form.destination}. Check travel
-              conditions and opening hours before departure.
+        <section className="generated-itinerary">
+          <header className="generated-itinerary-header">
+            <p className="trip-eyebrow">
+              ✦ YOUR PERSONALIZED JOURNEY
             </p>
+
+            <h2>
+              Your next adventure in{' '}
+              {itinerary.destination || form.destination}
+            </h2>
+
+            <p>
+              A travel plan tailored to your preferences,
+              budget, and travel style.
+            </p>
+
+            <div className="generated-itinerary-stats">
+              <div className="generated-itinerary-stat">
+                <span className="generated-stat-icon">
+                  📅
+                </span>
+                <div>
+                  <strong>{itinerary.days.length}</strong>
+                  <span>
+                    {itinerary.days.length === 1
+                      ? 'Day'
+                      : 'Days'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="generated-itinerary-stat">
+                <span className="generated-stat-icon">
+                  👥
+                </span>
+                <div>
+                  <strong>{form.travelers}</strong>
+                  <span>
+                    {Number(form.travelers) === 1
+                      ? 'Traveler'
+                      : 'Travelers'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="generated-itinerary-stat">
+                <span className="generated-stat-icon">
+                  💰
+                </span>
+                <div>
+                  <strong>
+                    {formatCurrency(form.budget)}
+                  </strong>
+                  <span>Total budget</span>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <div className="generated-itinerary-days">
+            <div className="generated-itinerary-days-heading">
+              <p className="trip-eyebrow">
+                YOUR TRAVEL PLAN
+              </p>
+              <h3>Explore day by day</h3>
+            </div>
+
+            {itinerary.days.map((day, index) => (
+              <article
+                className="generated-day-card"
+                key={day.day ?? index}
+              >
+                <div className="generated-day-heading">
+                  <span className="generated-day-number">
+                    Day {day.day ?? index + 1}
+                  </span>
+
+                  {day.date && (
+                    <span className="generated-day-date">
+                      {day.date}
+                    </span>
+                  )}
+                </div>
+
+                <div className="generated-day-activities">
+                  {itineraryPeriods.map((period) =>
+                    renderItineraryActivity(
+                      period.key,
+                      day[period.key],
+                    ),
+                  )}
+                </div>
+              </article>
+            ))}
           </div>
 
-          {itinerary.days.map((day) => (
-            <article className="recommendation-category" key={day.day}>
-              <h3>
-                Day {day.day} — {day.date}
-              </h3>
+          {itinerary.summary && (
+            <div className="generated-itinerary-footer">
+              <h3>Your trip at a glance</h3>
+              <p>{itinerary.summary}</p>
+            </div>
+          )}
 
-              {['morning', 'afternoon', 'evening'].map((period) =>
-                renderItineraryActivity(period, day[period]),
+          {itinerary.tips && (
+            <div className="generated-itinerary-footer">
+              <h3>Travel tips</h3>
+              {Array.isArray(itinerary.tips) ? (
+                <ul>
+                  {itinerary.tips.map((tip, index) => (
+                    <li key={index}>{tip}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>{itinerary.tips}</p>
               )}
-            </article>
-          ))}
+            </div>
+          )}
+
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={handleCreateAnotherTrip}
+          >
+            Plan another trip
+          </button>
         </section>
       )}
 
-      {recommendationError && (
-        <div className="form-message error" role="alert">
-          <strong>
-            Your trip was saved, but AI recommendations are unavailable.
-          </strong>
-          <p>{recommendationError}</p>
+      {renderRecommendationGroups(recommendations)}
+
+      {createdTrip && !itinerary && !loading && (
+        <div className="trip-saved-message">
+          <h3>Your trip has been saved!</h3>
+          <p>
+            Your trip details are saved. You can find your
+            trip in the My Trips section.
+          </p>
         </div>
       )}
-
-      {recommendations && (
-        <section className="recommendations-section">
-          <div className="trip-form-heading">
-            <p className="eyebrow">MADE FOR YOU</p>
-            <h2>Your personalized travel recommendations</h2>
-            <p>
-              Costs are estimates and should be verified before your trip.
-            </p>
-          </div>
-
-          {renderRecommendationCategory(
-            'Attractions',
-            recommendations.attractions,
-          )}
-
-          {renderRecommendationCategory(
-            'Activities',
-            recommendations.activities,
-          )}
-
-          {renderRecommendationCategory('Dining', recommendations.dining)}
-
-          {renderRecommendationCategory(
-            'Local experiences',
-            recommendations.local_experiences,
-          )}
-        </section>
-      )}
-    </section>
+    </div>
   )
+}
+
+function formatCategory(category) {
+  return String(category)
+    .replace(/[_-]/g, ' ')
+    .replace(/\b\w/g, (character) =>
+      character.toUpperCase(),
+    )
 }
 
 export default TripPreferenceForm
