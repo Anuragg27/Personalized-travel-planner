@@ -1,81 +1,98 @@
-# Personalized Travel Itinerary Planner
+# ✈️ Personalized Travel Itinerary Planner
 
-An AI-powered travel planning application that helps users create personalised travel itineraries based on their destination, budget, interests, and travel dates.
+An AI-powered travel planning web application that generates personalized travel itineraries based on a user's destination, travel dates, budget, interests, dietary preferences, travel pace, and preferred travel vibe.
 
-## Features
+🌐 **Live Demo:** https://personalized-travel-planner-drab.vercel.app/
 
-Planned features:
+📚 **Backend API:** https://personalized-travel-planner.onrender.com/docs
 
-- Personalised travel recommendations
-- Budget-based trip planning
-- Day-by-day itinerary generation
-- Destination and attraction suggestions
-- User preference collection
-- Saving, editing, and regenerating trips
-- Supabase authentication and database integration
+## ✨ Features
 
-This repository currently contains the Milestone 1 project skeleton. Application features are not implemented yet.
+- 🔐 **User Authentication:** Sign up and log in securely using Supabase Auth.
+- 🧭 **Personalized Trip Planning:** Enter your origin, destination, travel dates, budget, and number of travelers.
+- 🎯 **Interest-Based Recommendations:** Customize trips based on selected interests.
+- 🌄 **Travel Vibe Personalization:** Choose a travel style such as adventure, relaxation, luxury, budget, or balanced travel.
+- 🤖 **AI-Powered Itinerary Generation:** Generate day-by-day travel plans using Groq AI.
+- 🗓️ **Daily Activities:** Organize itinerary activities into morning, afternoon, and evening.
+- 💾 **Trip Management:** Save trips and access them later.
+- 📋 **My Trips Dashboard:** View your saved trips.
+- 📝 **Trip Details:** View generated itinerary information for individual trips.
+- 📱 **Responsive Interface:** Use the application across desktop and mobile screen sizes.
 
-## Tech stack
-
-- Frontend: React with Vite and JavaScript
-- Styling: CSS
-- Backend: Python with FastAPI
-- Database and authentication: Supabase (later)
-- AI: a generative AI API (later)
-- Version control: Git and GitHub
-
-## Folder structure
-
-```text
-.
-├── README.md
-├── .gitignore
-├── docs/
-├── frontend/          # React + Vite app
-│   └── src/
-│       ├── assets/
-│       ├── components/
-│       ├── pages/
-│       ├── hooks/
-│       ├── services/
-│       ├── styles/
-│       └── utils/
-└── backend/           # FastAPI app
-    └── app/
-        ├── api/routers/
-        ├── core/
-        ├── models/
-        ├── schemas/
-        └── services/
-```
-
-## Basic setup
-
-The frontend and backend run independently.
+## 🛠️ Tech Stack
 
 ### Frontend
-
-```bash
-cd frontend
-cp .env.example .env
-npm install
-npm run dev
-```
-
-Open http://localhost:5173.
+- React
+- Vite
+- JavaScript
+- CSS
+- React Router
+- Framer Motion
+- Lucide React
 
 ### Backend
+- Python
+- FastAPI
+- Uvicorn
 
-```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-cp .env.example .env
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
+### Database and Authentication
+- Supabase
+- PostgreSQL
+- Supabase Auth
 
-Open http://localhost:8000.
+### Artificial Intelligence
+- Groq API
+- Large Language Models (LLMs)
+- Prompt Engineering
+- Structured JSON Responses
 
-More detail is in `docs/setup.md`. Architecture notes are in `docs/architecture.md`.
+### Deployment and Version Control
+- Vercel — Frontend deployment
+- Render — Backend deployment
+- Git and GitHub — Version control
+
+## 🏗️ Application Architecture
+
+```text
+User
+ |
+ v
+React Frontend (Vercel)
+ |
+ | HTTP requests / REST API
+ v
+FastAPI Backend (Render)
+ |
+ +--------------------+
+ |                    |
+ v                    v
+Supabase           Groq AI
+ |                    |
+ v                    v
+User Authentication  AI-Generated
+and Trip Storage     Itineraries
+
+📂 Project Structure
+
+Personalized-travel-planner/
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── services/
+│   │   └── styles/
+│   ├── public/
+│   ├── package.json
+│   └── .env.example
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   │   └── routers/
+│   │   ├── core/
+│   │   ├── schemas/
+│   │   └── services/
+│   ├── requirements.txt
+│   └── .env.example
+├── docs/
+├── .gitignore
+└── README.md
