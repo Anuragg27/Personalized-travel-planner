@@ -31,3 +31,14 @@ __pycache__/
 
 # Keys
 *.pem
+
+# Additional environment files
+.env.*
+
+# Allow example environment templates
+!.env.example
+
+# Root-level build and cache files
+dist/
+coverage/
+.DS_Store
