@@ -72,7 +72,7 @@ Supabase           Groq AI
 User Authentication  AI-Generated
 and Trip Storage     Itineraries
 
-📂 Project Structure
+## 📂 Project Structure
 
 Personalized-travel-planner/
 ├── frontend/
