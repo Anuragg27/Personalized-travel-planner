@@ -1,47 +1,48 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 
 export default function Login() {
-const [email, setEmail] = useState('');
-const [password, setPassword] = useState('');
-const [message, setMessage] = useState('');
-const [errorMessage, setErrorMessage] = useState('');
-const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-async function handleLogin(event) {
-event.preventDefault();
-setMessage('');
-setErrorMessage('');
-setLoading(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
-try {
-  const { error } = await supabase.auth.signInWithPassword({
-    email: email.trim(),
-    password,
-  });
+  async function handleLogin(event) {
+    event.preventDefault();
+    setMessage('');
+    setErrorMessage('');
+    setLoading(true);
 
-  if (error) {
-    throw error;
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setPassword('');
+      navigate('/');
+    } catch (error) {
+      setErrorMessage(error.message || 'Unable to log in.');
+    } finally {
+      setLoading(false);
+    }
   }
 
-  setMessage('Login successful!');
-  setPassword('');
-} catch (error) {
-  setErrorMessage(error.message || 'Unable to log in.');
-} finally {
-  setLoading(false);
-}
-}
-
-return (
-
+  return (
     <main>
       <form onSubmit={handleLogin}>
         <p style={styles.subtitle}>
           Log in to continue planning your trip.
         </p>
-  
+
         <label htmlFor="email">Email Address</label>
         <input
           id="email"
@@ -52,7 +53,7 @@ return (
           autoComplete="email"
           required
         />
-  
+
         <label htmlFor="password">Password</label>
         <input
           id="password"
@@ -63,27 +64,27 @@ return (
           autoComplete="current-password"
           required
         />
-  
+
         <button
           type="submit"
           disabled={loading}
           style={styles.button}
         >
-          {loading ? "Logging In..." : "Log In"}
+          {loading ? 'Logging In...' : 'Log In'}
         </button>
-  
+
         {message && (
           <p role="status" style={styles.success}>
             {message}
           </p>
         )}
-  
+
         {errorMessage && (
           <p role="alert" style={styles.error}>
             {errorMessage}
           </p>
         )}
-  
+
         <p style={styles.footer}>
           Don't have an account? <Link to="/signup">Sign up</Link>
         </p>
@@ -91,8 +92,9 @@ return (
     </main>
   );
 }
+
 const styles = {
-    container: {
+  container: {
     minHeight: '100vh',
     display: 'flex',
     justifyContent: 'center',
@@ -100,8 +102,8 @@ const styles = {
     background: '#FFF7ED',
     padding: '20px',
     boxSizing: 'border-box',
-    },
-    form: {
+  },
+  form: {
     display: 'flex',
     flexDirection: 'column',
     gap: '12px',
@@ -112,16 +114,16 @@ const styles = {
     borderRadius: '16px',
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
     boxSizing: 'border-box',
-    },
-    heading: {
+  },
+  heading: {
     marginBottom: '0',
     color: '#9A3412',
-    },
-    subtitle: {
+  },
+  subtitle: {
     marginTop: '0',
     color: '#666666',
-    },
-    button: {
+  },
+  button: {
     marginTop: '8px',
     padding: '12px',
     border: 'none',
@@ -130,15 +132,15 @@ const styles = {
     color: '#FFFFFF',
     fontSize: '16px',
     cursor: 'pointer',
-    },
-    success: {
+  },
+  success: {
     color: '#15803D',
-    },
-    error: {
+  },
+  error: {
     color: '#B91C1C',
-    },
-    footer: {
+  },
+  footer: {
     textAlign: 'center',
     fontSize: '14px',
-    },
-    };
+  },
+};
