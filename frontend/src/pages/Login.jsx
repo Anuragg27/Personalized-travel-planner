@@ -23,9 +23,7 @@ export default function Login() {
         password,
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       setPassword('');
       navigate('/');
@@ -37,8 +35,10 @@ export default function Login() {
   }
 
   return (
-    <main>
-      <form onSubmit={handleLogin}>
+    <main style={styles.container}>
+      <form onSubmit={handleLogin} style={styles.form}>
+        <h1 style={styles.heading}>Welcome Back ✈️</h1>
+
         <p style={styles.subtitle}>
           Log in to continue planning your trip.
         </p>
@@ -65,6 +65,10 @@ export default function Login() {
           required
         />
 
+        <div style={styles.forgotPassword}>
+          <Link to="/forgot-password">Forgot Password?</Link>
+        </div>
+
         <button
           type="submit"
           disabled={loading}
@@ -74,15 +78,11 @@ export default function Login() {
         </button>
 
         {message && (
-          <p role="status" style={styles.success}>
-            {message}
-          </p>
+          <p role="status" style={styles.success}>{message}</p>
         )}
 
         {errorMessage && (
-          <p role="alert" style={styles.error}>
-            {errorMessage}
-          </p>
+          <p role="alert" style={styles.error}>{errorMessage}</p>
         )}
 
         <p style={styles.footer}>
@@ -112,16 +112,20 @@ const styles = {
     padding: '32px',
     background: '#FFFFFF',
     borderRadius: '16px',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
     boxSizing: 'border-box',
   },
   heading: {
-    marginBottom: '0',
+    marginBottom: 0,
     color: '#9A3412',
   },
   subtitle: {
-    marginTop: '0',
+    marginTop: 0,
     color: '#666666',
+  },
+  forgotPassword: {
+    textAlign: 'right',
+    fontSize: '14px',
   },
   button: {
     marginTop: '8px',
@@ -133,12 +137,8 @@ const styles = {
     fontSize: '16px',
     cursor: 'pointer',
   },
-  success: {
-    color: '#15803D',
-  },
-  error: {
-    color: '#B91C1C',
-  },
+  success: { color: '#15803D' },
+  error: { color: '#B91C1C' },
   footer: {
     textAlign: 'center',
     fontSize: '14px',

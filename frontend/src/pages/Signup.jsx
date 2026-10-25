@@ -1,13 +1,73 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 
+const API_URL = (
+  import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+).replace(/\/$/, '');
+
 export default function Signup() {
+  const navigate = useNavigate();
+  const pollingRef = useRef(null);
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [waiting, setWaiting] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, []);
+
+  async function startConfirmationPolling(token) {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+    }
+
+    setWaiting(true);
+
+    const checkConfirmation = async () => {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/auth/confirmation-status?token=${encodeURIComponent(token)}`
+        );
+
+        if (response.status === 410 || response.status === 404) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+          setWaiting(false);
+          setMessage('Confirmation session expired. Please sign up again.');
+          return;
+        }
+
+        if (!response.ok) return;
+
+        const result = await response.json();
+
+        if (result.confirmed) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+          setWaiting(false);
+          setMessage('Email confirmed! Redirecting to Login...');
+          setTimeout(() => navigate('/login'), 1000);
+        }
+      } catch {
+        // Retry on the next polling interval.
+      }
+    };
+
+    await checkConfirmation();
+
+    if (!pollingRef.current) {
+      pollingRef.current = setInterval(checkConfirmation, 4000);
+    }
+  }
 
   async function handleSignup(event) {
     event.preventDefault();
@@ -15,31 +75,52 @@ export default function Signup() {
     setLoading(true);
 
     try {
+      const cleanEmail = email.trim().toLowerCase();
+
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: cleanEmail,
         password,
         options: {
-          data: {
-            full_name: fullName.trim(),
-          },
+          data: { full_name: fullName.trim() },
+          emailRedirectTo: `${window.location.origin}/login`,
         },
       });
 
-      if (error) {
-        throw error;
-      }
-
-      if (data.session) {
-        setMessage('Account created successfully! You are now logged in.');
-      } else {
-        setMessage(
-          'Account created! Please check your email to confirm your account.'
-        );
-      }
+      if (error) throw error;
 
       setFullName('');
-      setEmail('');
       setPassword('');
+
+      if (data.session) {
+        setEmail('');
+        navigate('/');
+        return;
+      }
+
+      // Create a private, temporary session for this browser.
+      const sessionResponse = await fetch(
+        `${API_URL}/api/auth/signup-session`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: cleanEmail }),
+        }
+      );
+
+      if (!sessionResponse.ok) {
+        setMessage(
+          'Signup submitted. Please confirm your email, then log in manually.'
+        );
+        return;
+      }
+
+      const sessionData = await sessionResponse.json();
+
+      setMessage(
+        'Please confirm your email. This page will redirect you to Login automatically.'
+      );
+
+      await startConfirmationPolling(sessionData.token);
     } catch (error) {
       setMessage(error.message || 'Signup failed. Please try again.');
     } finally {
@@ -59,7 +140,7 @@ export default function Signup() {
           type="text"
           placeholder="Enter your full name"
           value={fullName}
-          onChange={(event) => setFullName(event.target.value)}
+          onChange={(e) => setFullName(e.target.value)}
           autoComplete="name"
           required
         />
@@ -70,7 +151,7 @@ export default function Signup() {
           type="email"
           placeholder="Enter your email"
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           required
         />
@@ -81,17 +162,21 @@ export default function Signup() {
           type="password"
           placeholder="Create a password"
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
           minLength={8}
           required
         />
 
-        <button type="submit" disabled={loading} style={styles.button}>
+        <button type="submit" disabled={loading || waiting} style={styles.button}>
           {loading ? 'Creating Account...' : 'Sign Up'}
         </button>
 
         {message && <p role="status">{message}</p>}
+
+        {waiting && (
+          <p role="status">Waiting for email confirmation…</p>
+        )}
 
         <p style={styles.footer}>
           Already have an account? <Link to="/login">Log in</Link>
@@ -137,4 +222,4 @@ const styles = {
     textAlign: 'center',
     fontSize: '14px',
   },
-};  
+};

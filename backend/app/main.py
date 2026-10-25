@@ -1,12 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import health, trips, itinerary
+from app.api.routers import health, trips, itinerary, auth_status
 from app.core.config import API_TITLE, FRONTEND_ORIGIN
 
-
 app = FastAPI(title=API_TITLE)
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,10 +14,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+# Register API routers
 app.include_router(health.router)
 app.include_router(trips.router)
 app.include_router(itinerary.router)
+app.include_router(auth_status.router)
 
 
 @app.get("/")
